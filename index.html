@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar Roof Savings Estimator</title>
+    <style>
+        body {
+         
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+
+    /* Background image */
+    background-image: url('/mnt/data/360_F_1594310852_yBgXYGonIgHUScXtBABc8Bsal34wkGYG.jpg');
+    background-size: cover;       /* Make image fill the screen */
+    background-position: center;  /* Keep the important part centered */
+    background-repeat: no-repeat; /* No tiling */
+
+    /* Optional dark overlay */
+    background-color: rgba(0,0,0,0.5);
+    background-blend-mode: multiply;
+   /mnt/data/360_F_1594310852_yBgXYGonIgHUScXtBABc8Bsal34wkGYG.jpg}
+
+       /mnt/data/360_F_1594310852_yBgXYGonIgHUScXtBABc8Bsal34wkGYG.jpg
+}
+
+        header {
+            background: #1f6feb;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 40px auto;
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 8px 0 20px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #1f6feb;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1552b3;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #eef5ff;
+            display: none;
+        }
+
+        .result h3 {
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Solar Roof Savings Estimator</h1>
+</header>
+
+<div class="container">
+    <label>Monthly Power Bill ($)</label>
+    <input type="number" id="bill" placeholder="e.g. 150" />
+
+    <label>Roof Size (sq ft)</label>
+    <input type="number" id="roof" placeholder="e.g. 1200" />
+
+    <label>Sunlight Hours Per Day</label>
+    <input type="number" id="sunlight" placeholder="e.g. 6" />
+
+    <button onclick="calculate()">Calculate Savings</button>
+
+    <div class="result" id="result">
+        <h3>Estimated Annual Savings</h3>
+        <p id="annual"></p>
+        <h3>Estimated Payoff Time</h3>
+        <p id="payoff"></p>
+    </div>
+</div>
+<script>
+function calculate() {
+    const bill = parseFloat(document.getElementById("bill").value); // monthly $ (optional but used for capping)
+    const roof = parseFloat(document.getElementById("roof").value); // sq ft usable
+    const sunlight = parseFloat(document.getElementById("sunlight").value); // peak sun hours/day
+
+    if (isNaN(roof) || isNaN(sunlight)) {
+        alert("Please fill out roof size and sunlight hours.");
+        return;
+    }
+
+    // Configurable model parameters
+    const panelArea = 17.5;        // sq ft per panel (typical 60/72-cell)
+    const panelWatt = 400;         // W per panel
+    const derate = 0.78;           // system derate (losses: inverter, soiling, wiring, temp)
+    const rate = 0.18;             // $ per kWh (average you requested)
+
+    // Estimate number of panels and system size (kW)
+    const panels = roof / panelArea;
+    const system_kw = (panels * panelWatt) / 1000;
+
+    // Annual production: kW * peak-sun-hours/day * 365 * derate
+    const annual_kwh_production = system_kw * sunlight * 365 * derate;
+
+    // If user provided monthly bill, compute annual consumption and cap savings by usage
+    let annual_consumption_kwh = null;
+    if (!isNaN(bill) && bill > 0) {
+        annual_consumption_kwh = (bill * 12) / rate; // convert $/year to kWh/year
+    }
+
+    // kWh that actually offsets utility purchases
+    const offset_kwh = annual_consumption_kwh ? Math.min(annual_kwh_production, annual_consumption_kwh) : annual_kwh_production;
+
+    const yearly_savings = offset_kwh * rate;
+
+    // Payoff
+    const install_cost = 45000;
+    const payoff_years = yearly_savings > 0 ? (install_cost / yearly_savings) : Infinity;
+
+    // Display
+    document.getElementById("annual").innerHTML =
+        "$" + yearly_savings.toFixed(0) +
+        " estimated yearly savings <br>" +
+        "(Electricity rate used: $" + rate.toFixed(2) + " / kWh)";
+
+    if (annual_consumption_kwh) {
+        document.getElementById("annual").innerHTML +=
+            "<br>(Estimated annual usage: " + Math.round(annual_consumption_kwh) + " kWh)";
+    }
+
+    document.getElementById("payoff").innerText =
+        isFinite(payoff_years) ? payoff_years.toFixed(1) + " years to break even (Average U.S Solar System Cost = $45,000)" : "N/A";
+
+    document.getElementById("result").style.display = "block";
+
+    // (optional: expose internals for debugging)
+    console.log({
+        panels: panels,
+        system_kw: system_kw,
+        annual_kwh_production: annual_kwh_production,
+        annual_consumption_kwh: annual_consumption_kwh,
+        offset_kwh: offset_kwh,
+        yearly_savings: yearly_savings
+    });
+}
+</script>
+
+</body>
+</html>
